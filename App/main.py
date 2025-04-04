@@ -3,6 +3,7 @@ from flask import Flask, redirect, render_template, jsonify, request, send_from_
 from flask_cors import CORS
 from sqlalchemy.exc import OperationalError, IntegrityError
 from App.models import db, Book, Review, User
+from datetime import timedelta
 
 from flask_jwt_extended import (
     JWTManager,
@@ -21,8 +22,7 @@ def create_app():
   CORS(app)
   app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
   app.config['TEMPLATES_AUTO_RELOAD'] = True
-  app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(
-      app.root_path, 'data.db')
+  app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.root_path, 'data.db')
   app.config['DEBUG'] = True
   app.config['SECRET_KEY'] = 'MySecretKey'
   app.config['PREFERRED_URL_SCHEME'] = 'https'
@@ -32,6 +32,7 @@ def create_app():
   app.config["JWT_COOKIE_SECURE"] = True
   app.config["JWT_SECRET_KEY"] = "super-secret"
   app.config["JWT_COOKIE_CSRF_PROTECT"] = False
+  app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=1)
   app.app_context().push()
   return app
 
@@ -57,32 +58,32 @@ def expired_token_callback(jwt_header, jwt_payload):
     return redirect(url_for('login'))
 
 # uncomment when models are implemented
-# def parse_books():
-#   with open('books.csv', encoding='unicode_escape') as csvfile:
-#     reader = csv.DictReader(csvfile, delimiter=';')
-#     for row in reader:
-#       book = Book(isbn=row['isbn'],
-#                   title=row['title'],
-#                   author=row['author'],
-#                   publication_year=int(row['pub_year']),
-#                   publisher=row['publisher'],
-#                   image=row['image_large'])
-#       db.session.add(book)
-#   db.session.commit()
+def parse_books():
+  with open('books.csv', encoding='unicode_escape') as csvfile:
+    reader = csv.DictReader(csvfile, delimiter=';')
+    for row in reader:
+      book = Book(isbn=row['isbn'],
+                  title=row['title'],
+                  author=row['author'],
+                  publication_year=int(row['pub_year']),
+                  publisher=row['publisher'],
+                  image=row['image_large'])
+      db.session.add(book)
+  db.session.commit()
 
 
-# def parse_reviews():
-#   with open('reviews.csv') as csvfile:
-#     reader = csv.DictReader(csvfile, delimiter=';')
-#     for row in reader:
-#       review = Review(
-#         text=row['text'],
-#         rating=int(row['rating']),
-#         isbn=row['isbn'],
-#         user_id=row['user_id']
-#       )
-#       db.session.add(review)
-#     db.session.commit()
+def parse_reviews():
+  with open('reviews.csv') as csvfile:
+    reader = csv.DictReader(csvfile, delimiter=';')
+    for row in reader:
+      review = Review(
+        text=row['text'],
+        rating=int(row['rating']),
+        isbn=row['isbn'],
+        user_id=row['user_id']
+      )
+      db.session.add(review)
+    db.session.commit()
 
 
 def create_users():
