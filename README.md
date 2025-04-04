@@ -3,8 +3,10 @@ A template for simple flask projects. For production projects with testing and d
 
 # Installing Dependencies
 ```
-$ poetry install
+$ pip install -r requirements.txt 
 ```
+For repl just click on the RUN button instead.
+
 
 # Flask Commands
 
