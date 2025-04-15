@@ -1,6 +1,6 @@
 import os, csv
 from flask import Flask, redirect, render_template, jsonify, request, send_from_directory, flash, url_for
-from flask_cors import CORS
+#from flask_cors import CORS
 from sqlalchemy.exc import OperationalError, IntegrityError
 from App.models import db, Book, Review, User
 from datetime import timedelta
@@ -19,7 +19,7 @@ from flask_jwt_extended import (
 
 def create_app():
   app = Flask(__name__, static_url_path='/static')
-  CORS(app)
+  #CORS(app)
   app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
   app.config['TEMPLATES_AUTO_RELOAD'] = True
   app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.root_path, 'data.db')
@@ -100,15 +100,34 @@ def initialize_db():
   db.drop_all()
   db.create_all()
   create_users()
-  # parse_books()
-  # parse_reviews()
+  parse_books()
+  parse_reviews()
   print('database intialized')
 
 
 @app.route('/')
 def login():
+  initialize_db()
   return render_template('login.html')
 
+#view routes
+@app.route('/book/<isbn>/reviews')
+@jwt_required()
+def view_book_reviews(isbn):
+  book = Book.query.filter_by(isbn=isbn).first()
+  reviews = book.review
+
+@app.route('/book/<string:book_isbn>')
+def book_details(book_isbn):
+  book = Book.query.filter_by(isbn=book_isbn).first()
+  if not book:
+    flash("Book not found.", "error")
+    return redirect(url_for('home'))
+
+  # Get all reviews for this book
+  reviews = Review.query.filter_by(book_isbn=book_isbn).all()
+
+  return render_template('index.html', books=Book.query.all(), selected_book=book, reviews=reviews)
 
 @app.route('/login', methods=['POST'])
 def login_action():
@@ -128,8 +147,14 @@ def login_action():
 @app.route('/app')
 @jwt_required()
 def home():
-  books = Book.query.all()
-  return render_template('index.html', books=books, user=current_user)
+    page = request.args.get('page', 1, type=int)
+    per_page = 8
+    books = Book.query.paginate(page=page, per_page=per_page)
+
+    selected_book_isbn = request.args.get('book_isbn')
+    selected_book = Book.query.filter_by(isbn=selected_book_isbn).first() if selected_book_isbn else None
+    
+    return render_template('index.html', books=books, selected_book=selected_book, user=current_user)
 
 
 

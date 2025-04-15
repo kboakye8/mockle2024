@@ -1,95 +1,110 @@
-<!doctype html>
-<html lang="en">
-  <head>
-  
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-     <!--Import Google Icon Font-->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <!-- Compiled and minified CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <!--Let browser know website is optimized for mobile-->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Home</title>
+{% extends "layout.html" %}
+{% block title %}Home Page{% endblock %}
 
-    <style>
-      *{
-        box-sizing: border-box;  
-      }
+{% block menu %}
+    <li><a href="/">Logout</a></li>
+{% endblock %}
 
-      h1{
-        font-size : 1.5em;
-      }
+{{ super() }}
 
-      html{
-        height: 100vh;
-        width: 100vw;
-        margin:0;
-        padding:0;
-      }
-
-      body{
-        margin:0;
-        padding:0;
-        height: 100%;
-        width: 100%;
-      }
-
-    </style>
-
-  </head>
-  <body>
-    <nav class="purple">
-      <div class="nav-wrapper">
-        <a href="#" class="brand-logo">Home {{user.username}}</a>
-        <ul id="nav-mobile" class="right hide-on-med-and-down">
-          <li><a href="/logout">Logout</a></li>
-        </ul>
-      </div>
-    </nav>
-
-    {% with messages = get_flashed_messages() %}
-    {% if messages %}
-    <nav class="white black-text" style="padding: 10px">
-      <div class="nav-wrapper">
-          <ul class="flashes">
-          {% for message in messages %}
-            <li>{{ message }}</li>
-          {% endfor %}
-          </ul>
-      </div>
-    </nav>
-    {% endif %}
-    {% endwith %}
-
+    
+{% block content %}
+<div class="row" style="margin-top: 20px;">
+  <!-- Book Grid -->
+  <div class="col s12 m7">
     <div class="row">
-
-      <section class="col s12 m9" style="margin-top: 5px; overflow-y:scroll; height: 86vh">
-      
-      </section>
-
-      <section class="col s12 m3">
-
-          <p>
-            <!-- if a book was selected  -->
-            {% if book %}
-              <!-- display book details and review form -->
-
-                
-            {% else %}
-              <!-- if no book was selected, default state-->
-              <h1>Select a Book to view/add reviews</h1>
-            {% endif %}
-          </p>
-
-          <div class="row" style="height: 44vh; overflow-y: scroll">
-              
+      {% for book in books %}
+        <div class="col s6 m4 l3">
+          <div class="card small">
+            <div class="card-content">
+              <span class="card-title truncate">{{ book.title }}</span>
+              <p>{{ book.author }}<br>{{ book.publication_year }}<br>{{ book.publisher }}</p>
+              {#<p>
+                {% for i in range(1, 6) %}
+                  <span class="material-icons" style="color: gold;">
+                    {% if i <= book.rating|int %}star{% else %}star_border{% endif %}
+                  </span>
+                {% endfor %}
+              </p> #}
+              -->
+            </div>
+            <div class="card-action center">
+              <a class="btn purple lighten-1" href="{{ url_for('book_details', book_isbn=book.isbn) }}">Review</a>
+            </div>
           </div>
-      
-      </section>
-
+        </div>
+      {% endfor %}
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-    <script> M.AutoInit(); </script>
-  </body>
-</html>
+        <!-- Pagination -->
+        <ul class="pagination center">
+          {% if books.has_prev %}
+            <li class="waves-effect"><a href="{{ url_for('home', page=books.prev_num) }}"><i class="material-icons">chevron_left</i></a></li>
+          {% else %}
+            <li class="disabled"><a><i class="material-icons">chevron_left</i></a></li>
+          {% endif %}
+    
+          {% for p in range(1, books.pages + 1) %}
+            <li class="{% if p == books.page %}active{% else %}waves-effect{% endif %}">
+              <a href="{{ url_for('home', page=p) }}">{{ p }}</a>
+            </li>
+          {% endfor %}
+    
+          {% if books.has_next %}
+            <li class="waves-effect"><a href="{{ url_for('home', page=books.next_num) }}"><i class="material-icons">chevron_right</i></a></li>
+          {% else %}
+            <li class="disabled"><a><i class="material-icons">chevron_right</i></a></li>
+          {% endif %}
+        </ul>
+      </div>
+    
+      <!-- Review Section -->
+      {% if selected_book %}
+      <div class="col s12 m5">
+        <div class="card">
+          <div class="card-content">
+            <span class="card-title">{{ selected_book.title }} - {{ selected_book.isbn }}</span>
+            <form method="POST" action="{{ url_for('add_review', isbn=selected_book.isbn) }}">
+              <div class="input-field">
+                <textarea name="text" class="materialize-textarea" placeholder="Write your review" required></textarea>
+              </div>
+              <p>Rating:</p>
+              <p>
+                {% for i in range(1, 6) %}
+                  <label>
+                    <input name="rating" type="radio" value="{{ i }}" required />
+                    <span>{{ i }} Star{% if i > 1 %}s{% endif %}</span>
+                  </label>
+                {% endfor %}
+              </p>
+              <button class="btn purple" type="submit">Submit</button>
+            </form>
+          </div>
+        </div>
+    
+        <!-- Reviews -->
+        {% for review in selected_book.reviews %}
+          <div class="card">
+            <div class="card-content">
+              <p>{{ review.text }}</p>
+              <p>
+                {% for i in range(1, 6) %}
+                  <span class="material-icons" style="color: gold;">
+                    {% if i <= review.rating %}star{% else %}star_border{% endif %}
+                  </span>
+                {% endfor %}
+              </p>
+            </div>
+            {% if review.user_id == current_user.id %}
+              <div class="card-action right-align">
+                <form method="POST" action="{{ url_for('delete_review', review_id=review.id) }}">
+                  <button type="submit" class="btn red lighten-1">Delete</button>
+                </form>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+{% endblock %}
